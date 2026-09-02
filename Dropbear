@@ -1,0 +1,63 @@
+コンテナ起動
+
+docker run -it --name dropbear-build ubuntu:22.04 /bin/bash
+
+必要なパッケージとソースコードのインストール
+
+apt update && apt install -y build-essential wget gcc-arm-linux-gnueabi gcc-mips-linux-gnu gcc-mipsel-linux-gnu
+mkdir /build && cd /build
+wget https://matt.ucc.asn.au/dropbear/releases/dropbear-2022.83.tar.bz2
+tar -xvf dropbear-2022.83.tar.bz2
+
+ARM32 (armv5)
+cd /build/dropbear-2022.83
+
+# 構成設定
+./configure --build=x86_64-linux-gnu --host=arm-linux-gnueabi --disable-zlib --disable-syslog CC=arm-linux-gnueabi-gcc CFLAGS="-static" LDFLAGS="-static"
+
+# コンパイル (サーバー本体とキー生成ツールを生成)
+make MULTI=1 PROGRAMS="dropbear dropbearkey"
+
+# ストリップ＆リネーム
+arm-linux-gnueabi-strip dropbear
+mkdir -p /out
+mv dropbear /out/dropbear_armv5
+
+# クリーンアップ
+make clean
+
+
+MIPS32 Little-Endian
+
+# 構成設定
+./configure --build=x86_64-linux-gnu --host=mipsel-linux-gnu --disable-zlib --disable-syslog CC=mipsel-linux-gnu-gcc CFLAGS="-static" LDFLAGS="-static"
+
+# コンパイル
+make MULTI=1 PROGRAMS="dropbear dropbearkey"
+
+# ストリップ＆リネーム
+mipsel-linux-gnu-strip dropbear
+mv dropbear /out/dropbear_mipsle
+
+
+MIPS32 Big-Endian (mips) のビルド
+
+# 構成設定
+./configure --build=x86_64-linux-gnu --host=mips-linux-gnu --disable-zlib --disable-syslog CC=mips-linux-gnu-gcc CFLAGS="-static" LDFLAGS="-static"
+
+# コンパイル
+make MULTI=1 PROGRAMS="dropbear dropbearkey"
+
+# ストリップ＆リネーム
+mips-linux-gnu-strip dropbear
+mv dropbear /out/dropbear_mipsbe
+
+# クリーンアップ
+make clean
+
+ホストへ送る
+
+docker cp dropbear-build:/out ./dropbear_binaries
+
+
+
