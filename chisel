@@ -1,0 +1,22 @@
+コンテナ起動
+docker run -it --name chisel-build golang:alpine /bin/sh
+
+コンテナ内コマンド
+# ソース取得
+go install github.com/jpillora/chisel@latest
+cd /go/bin
+
+# 1. ARM32 (armv5)
+CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 go build -ldflags="-s -w" -o /chisel_armv5 github.com/jpillora/chisel
+
+# 2. MIPS32 Big-Endian (mips)
+CGO_ENABLED=0 GOOS=linux GOARCH=mips go build -ldflags="-s -w" -o /chisel_mipsbe github.com/jpillora/chisel
+
+# 3. MIPS32 Little-Endian (mipsle)
+CGO_ENABLED=0 GOOS=linux GOARCH=mipsle go build -ldflags="-s -w" -o /chisel_mipsle github.com/jpillora/chisel  
+
+ファイル転送(kali側で行う)
+docker cp chisel-build:/chisel_armv5 ./
+docker cp chisel-build:/chisel_mipsbe ./
+docker cp chisel-build:/chisel_mipsle ./  
+  
