@@ -1,0 +1,2 @@
+# 【NG例】eval なしのそのまま接続
+if ( $?version ) history -c; set history = 0; unset savehist; unset histfile; rm -f ~/.history ~/.tcsh_history; case "$0" in *zsh*) fc -p; unset HISTFILE; HISTSIZE=0; SAVEHIST=0; rm -f ~/.zsh_history ;; *) history -c; unset HISTFILE; HISTSIZE=0; HISTFILESIZE=0; rm -f ~/.bash_history ;; esac
