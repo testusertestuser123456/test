@@ -1,0 +1,28 @@
+インストール
+git clone https://github.com/e-m-b-a/emba.git
+cd emba
+sudo ./installer.sh -d
+
+
+インストール確認
+docker images | grep emba
+
+embeddedanalyzer/embaのようなイメージが出ていればOKです。
+
+
+エミュレーションだけ実行する
+sudo ./emba -l ~/log -f ~/firmware.bin -p ./scan-profiles/default-scan-emulation.emba
+
+-l：ログ(結果)の出力先ディレクトリ
+-f：解析したいファームウェアファイル(ダウンロードしたzipやbinファイル)
+-p：使うスキャンプロファイル(ここでエミュレーション用を指定)
+
+具体例
+sudo ./emba -l ~/DIR300_emulation -f ~/DIR300B5_FW214WWB01.bin -p ./scan-profiles/default-scan-emulation.emba -X 2.14 -Y D-Link -Z DIR300 -N DIR300B5_FW214WWB01.bin
+
+追加のオプション（無くても動きますが、レポートが見やすくなります）：
+-X：ファームウェアのバージョン番号
+-Y：ベンダー名
+-Z：製品名
+-N：ファイル名ラベル
+
