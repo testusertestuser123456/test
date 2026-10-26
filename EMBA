@@ -3,6 +3,10 @@ git clone https://github.com/e-m-b-a/emba.git
 cd emba
 sudo ./installer.sh -d
 
+エミュレーション
+sudo ./emba -f ~/firmware.bin -l ~/emba_logs -p ./scan-profiles/default-scan-emulation.emba
+sudo ./emba -f ~/firmware.bin -l ~/emba_logs -m L10_system_emulation
+
 
 インストール確認
 docker images | grep emba
