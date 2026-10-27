@@ -1,0 +1,5 @@
+docker info | grep -i rootless
+# "rootless" と出れば rootless Docker 確定
+
+docker context ls
+# rootless用のcontextが使われているか分かる
