@@ -1,0 +1,84 @@
+dirsearch
+
+# クロール（応答・robots・リンクから新パスを発見して追加）
+dirsearch -u http://TARGET/ -e php,html,js --crawl
+
+# クロール + 再帰 + バックアップ探索（芋づる式フル）
+dirsearch -u http://TARGET/ -e php -r -R 3 --crawl --find-backup
+
+# さらに深追い：見つけたパスは全部再帰、上位ディレクトリも遡る
+dirsearch -u http://TARGET/ -e php -r --deep-recursive --force-recursive --crawl
+
+--crawl … リンク/robots/JSから新パスを拾う（デフォルトOFF）
+-r / -R 3 … 再帰 / 最大深さ
+--deep-recursive … api/usersを見つけたらapi/も遡る
+--find-backup … 見つけたファイルの.bak/.old/~/.zipを自動追撃
+
+プロキシ系
+# 単段（HTTP）  ※古いKali版は -p が無いので --proxy を使う
+dirsearch -u http://TARGET/ -e php --proxy http://127.0.0.1:8080
+
+# SOCKS5（要: pip install pysocks）
+dirsearch -u http://TARGET/ -e php --proxy socks5://user:password@127.0.0.1:1080
+
+# 認証つきプロキシ（分離指定も可）
+dirsearch -u http://TARGET/ -e php --proxy http://gw:8000 --proxy-auth user:pass
+
+# 複数プロキシをローテーション（毎リクエストでIPが散る）
+dirsearch -u http://TARGET/ -e php \
+          --proxies-file proxies.txt \
+          --random-agent --delay 0.1 --max-rate 20
+
+# 多段チェーン（手前の1台を指す。多段化はプロキシ側 or proxychains）
+dirsearch -u http://TARGET/ -e php --proxy http://first-hop:3128
+proxychains4 dirsearch -u http://TARGET/ -e php
+
+# Tor 経由
+dirsearch -u http://TARGET/ --tor
+
+# 見つかったパスだけ Burp に流す（発見→手動精査の橋渡し）
+dirsearch -u http://TARGET/ -e php --replay-proxy http://127.0.0.1:8080
+
+
+# 1) nmap でスキャン。-sV（サービス判定）と -oX（XML出力）が必須
+nmap -sV -oX scan.xml 10.0.0.0/24
+
+# 2) その XML を dirsearch に渡す
+dirsearch --nmap-report scan.xml -e php
+
+
+その中でも他ツールで代替しづらい筆頭は --nmap-report（nmap連携）とテンプレート/カテゴリ辞書の2つ、と覚えておくと説明しやすいです。
+
+
+  テンプレートファイル（db/templates/）
+7種類あります：
+admin.txt … 管理画面系
+api.txt … API系
+auth.txt … 認証・アカウント系
+backups.txt … バックアップ系
+crud.txt … 作成/取得/更新/削除系
+db.txt … DB系
+logs.txt … ログ系
+主なプレースホルダ（%...%）
+プレースホルダ
+展開される内容
+%SUBJECT%
+対象名（users, orders, products … などの名詞）
+%API_VERSION%
+v1, v2, … などのAPIバージョン
+%CRUD_OP%
+create/read/update/delete などの操作
+%AUTH_OP%
+login, logout, register, reset … 認証操作
+%ADMIN_OP%
+管理系の操作
+%BACKUP%
+zip, tar.gz, sql, bak … バックアップ拡張子
+%DATE% / %DATE_COMPACT%
+日付（2026-10-30 / 20261030 形式）
+%ENV%
+prod, dev, staging … 環境名
+%EXT%
+-e で指定した拡張子
+%CATEGORY:名前%
+指定カテゴリ辞書の語を差し込む
