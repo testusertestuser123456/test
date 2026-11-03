@@ -1,0 +1,53 @@
+sudo apt update && sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo docker ps      # エラーなく空リストならOK
+
+
+# コンテナを取得
+docker pull rehosting/penguin
+
+# penguin / fw2tar コマンドをインストール
+docker run rehosting/penguin penguin_install | sudo sh
+#   ↑ ユーザ領域に入れたいなら penguin_install.local | sh
+
+penguin --help
+fw2tar --help
+
+fw2tar DIR-859_REVA_FIRMWARE_1.05B03.zip
+#   → DIR-859_REVA_FIRMWARE_1.05B03.rootfs.tar.gz ができる
+
+
+penguin init DIR-859_REVA_FIRMWARE_1.05B03.rootfs.tar.gz \
+  --output projects/DIR-859
+#   やり直すとき: 末尾に --force（プロジェクトを作り直す＝results全消去に注意）
+
+penguin run projects/DIR-859/config.yaml --output projects/DIR-859/results/0
+
+
+cat > /tmp/relay.py <<'EOF'
+import socket, threading, sys
+lport=int(sys.argv[1]); thost=sys.argv[2]; tport=int(sys.argv[3])
+def pipe(a,b):
+    try:
+        while True:
+            d=a.recv(65536)
+            if not d: break
+            b.sendall(d)
+    except Exception: pass
+    try: b.shutdown(socket.SHUT_WR)
+    except Exception: pass
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+s.bind(("0.0.0.0",lport)); s.listen(16)
+print("relay :%d -> %s:%d"%(lport,thost,tport),flush=True)
+while True:
+    c,_=s.accept()
+    try: u=socket.create_connection((thost,tport))
+    except Exception: c.close(); continue
+    threading.Thread(target=pipe,args=(c,u),daemon=True).start()
+    threading.Thread(target=pipe,args=(u,c),daemon=True).start()
+EOF
+
+LIBINJ=$(find / -name 'lib_inject.so' 2>/dev/null | head -1)
+LD_PRELOAD="$LIBINJ" python3 /tmp/relay.py 8080 127.0.0.1 80 &
+
+wget -O - http://127.0.0.1:8080/ 2>&1 | head -5     # HTMLが返ればリレーOK
