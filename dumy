@@ -1,3 +1,62 @@
+アーセナル
+
+docker compose yml
+
+services:
+  arsenal:
+    image: nginx:stable
+    container_name: lab-arsenal
+    volumes:
+      - ./share:/srv/share:ro                              # ← ホストの共有フォルダをマウント
+      - ./arsenal.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
+    networks:
+      labnet4:
+        ipv4_address: 172.33.0.10      # ← 振ったIP
+    restart: unless-stopped
+
+networks:
+  labnet4:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.33.0.0/24
+
+arsenal.conf
+server {
+    listen 80;
+    server_name _;
+
+    # ノーオース：パスワードなしで取得
+    location /pub/ {
+        alias /srv/share/;
+        autoindex on;
+    }
+
+    # オース：Basic認証つきで取得（平文HTTPでOK）
+    location /secure/ {
+        alias /srv/share/;
+        autoindex on;
+        auth_basic "arsenal";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+}
+
+# apache2-utils がある場合（-b でパスワードも一緒に指定）
+htpasswd -bc ./.htpasswd user password
+
+# apache2-utils が無い場合（openssl で代用）
+printf "user:$(openssl passwd -apr1 password)\n" > ./.htpasswd
+
+# オース（user / password）
+curl -u user:password http://172.33.0.10/secure/myscript.sh -o myscript.sh
+
+# ノーオース（変更なし）
+curl http://172.33.0.10/pub/myscript.sh -o myscript.sh
+
+
+
+ダミー
 #!/bin/bash
 
 # --- Configuration ---
