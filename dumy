@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# --- Configuration ---
+DUMMY_DIR="./dummy"             # Directory to store dummy files
+FILE_SIZE="10M"                 # File size (e.g., 10M, 100K, 1G)
+NUM_FILES=3                     # Number of dummy files to create
+NUM_PROCESSES=2                 # Number of dummy processes to launch
+SLEEP_TIME=3600                 # Process lifetime in seconds
+
+echo "=== Starting Dummy Environment Setup ==="
+
+# 1. Create dummy directory
+mkdir -p "$DUMMY_DIR"
+echo "[+] Created directory: $DUMMY_DIR"
+
+# 2. Create dummy files
+echo "[+] Generating dummy files..."
+for i in $(seq 1 $NUM_FILES); do
+    filename="$DUMMY_DIR/dummy_file_$i.bin"
+    # Read random data from /dev/urandom to create a file of specified size
+    dd if=/dev/urandom of="$filename" bs=1 count=0 seek="$FILE_SIZE" status=none
+    echo "  - Created: $filename (Size: $FILE_SIZE)"
+done
+
+# 3. Create dummy processes with custom names
+echo "[+] Launching dummy processes in background..."
+PIDS=()
+for i in $(seq 1 $NUM_PROCESSES); do
+    # Use 'exec -a' to rename the process to "dummy_process_N"
+    (
+      exec -a "dummy_process_$i" sleep "$SLEEP_TIME"
+    ) &
+    pid=$!
+    PIDS+=($pid)
+    echo "  - Started: PID $pid (dummy_process_$i)"
+done
+
+echo ""
+echo "=== Setup Complete ==="
+echo "- Created Process IDs (PIDs): ${PIDS[*]}"
+echo "- Dummy Files Location: $DUMMY_DIR"
+echo ""
+echo "【How to Check】"
+echo "To check running processes : ps aux | grep dummy_process"
+echo "To check created files     : ls -lh $DUMMY_DIR"
+echo ""
+echo "【Cleanup Commands】"
+echo "To stop all dummy processes: pkill -f \"dummy_process\""
+echo "To delete dummy directory  : rm -rf $DUMMY_DIR"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ルータ用
+
+#!/bin/bash
+
+# --- Configuration ---
+DUMMY_DIR="./dummy"             # Directory to store dummy files
+FILE_SIZE="10M"                 # File size (e.g., 10M, 100K, 1G)
+NUM_FILES=3                     # Number of dummy files to create
+NUM_PROCESSES=2                 # Number of dummy processes to launch
+SLEEP_TIME=3600                 # Process lifetime in seconds
+
+echo "=== Starting Dummy Environment Setup ==="
+
+# 1. Create dummy directory
+mkdir -p "$DUMMY_DIR"
+echo "[+] Created directory: $DUMMY_DIR"
+
+# 2. Create dummy files
+echo "[+] Generating dummy files..."
+for i in $(seq 1 $NUM_FILES); do
+    filename="$DUMMY_DIR/dummy_file_$i.bin"
+    # Read random data from /dev/urandom to create a file of specified size
+    dd if=/dev/urandom of="$filename" bs=1 count=0 seek="$FILE_SIZE" status=none
+    echo "  - Created: $filename (Size: $FILE_SIZE)"
+done
+
+# 3. Create dummy processes
+echo "[+] Launching dummy processes in background..."
+PIDS=()
+for i in $(seq 1 $NUM_PROCESSES); do
+    # Launch sleep in the background
+    sleep "$SLEEP_TIME" &
+    pid=$!
+    PIDS+=($pid)
+    echo "  - Started: PID $pid (sleep)"
+done
+
+echo ""
+echo "=== Setup Complete ==="
+echo "- Created Process IDs (PIDs): ${PIDS[*]}"
+echo "- Dummy Files Location: $DUMMY_DIR"
+echo ""
+echo "【How to Check】"
+echo "To check running processes : ps aux | grep sleep"
+echo "To check created files     : ls -lh $DUMMY_DIR"
+echo ""
+echo "【Cleanup Commands】"
+echo "To stop all dummy processes: pkill -f \"sleep $SLEEP_TIME\""
+echo "To delete dummy directory  : rm -rf $DUMMY_DIR"
