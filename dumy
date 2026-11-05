@@ -1,5 +1,8 @@
 C2エージェントが実行するコマンドは、ユーザーの対話ログインシェルを通らず直接実行されることが多いため、標的の~/.bash_historyのようなシェル履歴には基本的に残りません
 
+なぜ標的にコマンド履歴が残らないのか（実装で確認）
+Merlinのshellコマンドの実装（merlin-agent/commands/shell_linux.go）を見ると、実行はこうなっています
+cmd := exec.Command("/bin/sh", append([]string{"-c"}, strings.Join(args, " "))...)
 
 
 
