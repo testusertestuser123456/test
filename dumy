@@ -16,6 +16,95 @@ sh -c は非対話(non-interactive)シェルの一発起動です。~/.bash_hist
 → 標的へ送られる
 
 
+MythicのPythonスクリプティングAPIは、「MythicをPythonプログラムから操作する」ための公式パッケージ
+
+前提：どんなものか
+mythicというPythonパッケージで、Mythicサーバーに接続して操作します
+**非同期（async）**で動くので、コードはasync def＋awaitの形で書きます（おまじないと思ってOK）
+
+ステップ1：インストール
+あなたのMythicはv3.4.36なので、対応版を入れます（Kali上で）。
+
+python3 -m pip install 'mythic>=0.3.0rc8'
+
+ステップ2：管理者パスワードを確認
+cd ~/Mythic
+sudo ./mythic-cli config | grep -i admin_password
+ステップ3：ファイルを載せるスクリプト
+
+stage_file.pyとして保存します
+
+単一ファイル
+import asyncio
+from mythic import mythic
+
+async def main():
+    # 1) Mythicにログイン
+    client = await mythic.login(
+        server_ip="127.0.0.1",
+        server_port=7443,
+        username="mythic_admin",
+        password="ここに管理者パスワード",   # ステップ2で確認した値
+        ssl=True,
+    )
+
+    # 2) 載せたいローカルファイルを読む
+    with open("/home/kali/tools/myscript.sh", "rb") as f:   # ←パスは自分のに変更
+        contents = f.read()
+
+    # 3) Mythicに登録（＝ストアに載せる）
+    file_uuid = await mythic.register_file(
+        mythic=client,
+        filename="myscript.sh",
+        contents=contents,
+    )
+    print("登録完了！ file UUID =", file_uuid)
+
+asyncio.run(main())
+
+フォルダごと
+
+import asyncio
+import os
+from mythic import mythic
+
+FOLDER = "/home/kali/tools/myfolder"   # ←載せたいフォルダ
+
+async def main():
+    client = await mythic.login(
+        server_ip="127.0.0.1",
+        server_port=7443,
+        username="mythic_admin",
+        password="ここに管理者パスワード",
+        ssl=True,
+    )
+
+    results = {}
+    for root, dirs, files in os.walk(FOLDER):
+        for name in files:
+            path = os.path.join(root, name)
+            rel = os.path.relpath(path, FOLDER)   # フォルダ内の相対パス
+            with open(path, "rb") as f:
+                contents = f.read()
+            file_uuid = await mythic.register_file(
+                mythic=client,
+                filename=rel,          # 相対パスを名前にして構造を残す
+                contents=contents,
+            )
+            results[rel] = file_uuid
+            print("登録:", rel, "->", file_uuid)
+
+    print("\n完了：", len(results), "個のファイルを登録しました")
+
+asyncio.run(main())
+
+実行：
+python3 stage_folder.py
+各ファイルが「相対パス → UUID」で登録され、最後に合計が出ます。UIの「Search Files」に全部出てくれば成功です。
+
+
+
+
 
 アーセナル
 
