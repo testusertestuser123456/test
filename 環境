@@ -87,6 +87,17 @@ CMD ["sleep", "infinity"]
 
 arsenal/Dockerfile
 
+FROM httpd:2.4
+
+# WebDAV 用のロック DB 置き場・共有用ディレクトリ・認証ファイルを用意
+RUN set -eux; \
+    mkdir -p /usr/local/apache2/auth /usr/local/apache2/var /dav/noauth /dav/auth; \
+    htpasswd -bc /usr/local/apache2/auth/.htpasswd user password; \
+    chown -R daemon:daemon /usr/local/apache2/var
+
+# WebDAV 設定を追加し、メイン設定から include
+COPY httpd-dav.conf /usr/local/apache2/conf/extra/httpd-dav.conf
+RUN printf '\nInclude conf/extra/httpd-dav.conf\n' >> /usr/local/apache2/conf/httpd.conf
 
 
 arsenal/httpd-dav.conf
