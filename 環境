@@ -134,3 +134,33 @@ Alias /auth /dav/auth
     AuthUserFile /usr/local/apache2/auth/.htpasswd
     Require valid-user
 </Directory>
+
+
+
+事前準備
+
+mkdir -p /home/kali/auth /home/kali/noauth
+echo 'このファイルは認証なしで取得できます' > /home/kala/noauth/readme.txt
+echo 'このファイルは user/password が必要です' > /home/kali/auth/secret.txt
+
+cd docker-lab
+docker compose up -d --build     # 起動(初回はビルド)
+docker compose ps                # 状態確認
+docker compose down              # 停止・削除
+
+
+# GeoServer (CVE-2024-36401), admin / geoserver
+curl http://172.20.0.20:8080/geoserver/web/
+
+# アーセナル WebDAV: noauth は認証なし
+curl http://172.20.0.30/noauth/
+curl -O http://172.20.0.30/noauth/readme.txt
+
+# auth は認証が必要(未認証は 401)
+curl -i http://172.20.0.30/auth/                 # -> 401
+curl -u user:password http://172.20.0.30/auth/   # -> OK
+
+# victim-ubuntu に入って疎通確認
+docker exec -it victim-ubuntu bash
+ip a
+ping -c1 172.20.0.20
