@@ -101,3 +101,36 @@ RUN printf '\nInclude conf/extra/httpd-dav.conf\n' >> /usr/local/apache2/conf/ht
 
 
 arsenal/httpd-dav.conf
+
+# ===== Arsenal WebDAV 設定 =====
+# httpd:2.4 の既定 httpd.conf で未ロードのモジュールだけを追加ロード
+<IfModule !dav_module>
+    LoadModule dav_module modules/mod_dav.so
+</IfModule>
+<IfModule !dav_fs_module>
+    LoadModule dav_fs_module modules/mod_dav_fs.so
+</IfModule>
+
+# WebDAV ロックデータベース
+DavLockDB /usr/local/apache2/var/DavLock
+
+# ---- noauth 共有: 認証なしでアクセス可 ----
+Alias /noauth /dav/noauth
+<Directory /dav/noauth>
+    Dav On
+    Options Indexes
+    AllowOverride None
+    Require all granted
+</Directory>
+
+# ---- auth 共有: Basic 認証 (user / password) ----
+Alias /auth /dav/auth
+<Directory /dav/auth>
+    Dav On
+    Options Indexes
+    AllowOverride None
+    AuthType Basic
+    AuthName "Arsenal Authenticated Share"
+    AuthUserFile /usr/local/apache2/auth/.htpasswd
+    Require valid-user
+</Directory>
