@@ -10,6 +10,52 @@ docker-lab/
 
 docker-compose.yml
 
+name: pentest-lab
+
+networks:
+  labnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+services:
+  # ---- 被害環境 1: Ubuntu (標準コマンド入り) ----
+  victim-ubuntu:
+    build: ./victim-ubuntu
+    container_name: victim-ubuntu
+    hostname: victim-ubuntu
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.10
+    cap_add:
+      - NET_RAW      # ping (raw socket)
+      - NET_ADMIN    # ip route 等の操作用
+    restart: unless-stopped
+
+  # ---- 被害環境 2: 脆弱な GeoServer (CVE-2024-36401 / RCE) ----
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.23.2
+    container_name: geoserver-vuln
+    hostname: geoserver
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.20
+    restart: unless-stopped
+
+  # ---- アーセナルサーバ: Apache WebDAV (noauth / auth) ----
+  arsenal:
+    build: ./arsenal
+    container_name: arsenal
+    hostname: arsenal
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.30
+    volumes:
+      - /home/kali/noauth:/dav/noauth      # 認証なしで取得可
+      - /home/kali/auth:/dav/auth          # user/password 必須
+    restart: unless-stopped
 
 victim-ubuntu/Dockerfile
 
