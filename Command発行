@@ -1,0 +1,113 @@
+Code
+
+import time
+import requests
+
+# --- 設定項目 ---
+MYTHIC_HOST = "https://your-mythic-server:7443"  # MythicのURL
+API_TOKEN = "YOUR_MYTHIC_API_TOKEN"  # オペレーターのAPIトークン
+CALLBACK_ID = 1  # 対象となるMerlinエージェントのCallback ID
+COMMAND_NAME = "shell"  # 実行するコマンド（例: shell, ps など）
+COMMAND_PARAMS = "whoami"  # コマンドの引数
+
+# SSL証明書の検証を行う場合は True、自己署名証明書なら False
+VERIFY_SSL = False
+
+# GraphQLのエンドポイント
+GRAPHQL_URL = f"{MYTHIC_HOST}/graphql/"
+
+headers = {
+    "Authorization": f"Bearer {API_TOKEN}",
+    "Content-Type": "json",
+}
+
+
+def run_graphql_query(query, variables=None):
+    """MythicのGraphQLエンドポイントへクエリ/ミューテーションを送信する共通関数"""
+    payload = {"query": query, "variables": variables or {}}
+    response = requests.post(
+        GRAPHQL_URL, json=payload, headers=headers, verify=VERIFY_SSL
+    )
+
+    if response.status_code != 200:
+        raise Exception(
+            f"API Request Failed: {response.status_code} - {response.text}"
+        )
+
+    result = response.json()
+    if "errors" in result:
+        raise Exception(f"GraphQL Error: {result['errors']}")
+
+    return result["data"]
+
+
+def issue_task_and_wait(callback_id, command_name, params):
+    """指定したCallbackに対してコマンドを発行し、完了を待って出力を取得する"""
+
+    # 1. コマンドライン（タスク）を登録・発行するミューテーション
+    mutation = """
+    mutation CreateTask($callback_id: Int!, $command_name: String!, $params: String!) {
+        task(callback_id: $callback_id, command_name: $command_name, params: $params) {
+            id
+            status
+            display_params
+        }
+    }
+    """
+    variables = {
+        "callback_id": callback_id,
+        "command_name": command_name,
+        "params": params,
+    }
+
+    print(
+        f"[*] コマンド発行中... [Callback: {callback_id}] {command_name} {params}"
+    )
+    data = run_graphql_query(mutation, variables)
+    task_info = data["task"]
+
+    # 新しいMythicのバージョンや構成によってはリストで返ることがあるため安全に取得
+    if isinstance(task_info, list):
+        task_info = task_info[0]
+
+    task_id = task_info["id"]
+    print(f"[+] タスク作成成功 (Task ID: {task_id})。完了を待っています...")
+
+    # 2. タスクの完了をポーリングで監視
+    query_status = """
+    query GetTaskStatus($task_id: Int!) {
+        task_by_pk(id: $task_id) {
+            id
+            status
+            responses {
+                response
+            }
+        }
+    }
+    """
+
+    while True:
+        status_data = run_graphql_query(query_status, {"task_id": task_id})
+        task_obj = status_data["task_by_pk"]
+        status = task_obj["status"]
+
+        # 完了状態のステータス（Mythicでは 'completed', 'error', 'processed' など）
+        if status in ["completed", "error", "processed"]:
+            print(f"[+] タスクがステータス '{status}' で終了しました。")
+
+            # レスポンス出力の結合
+            responses = task_obj.get("responses", [])
+            full_output = "".join([r["response"] for r in responses])
+            return full_output
+
+        time.sleep(3)
+
+
+if __name__ == "__main__":
+    try:
+        output = issue_task_and_wait(CALLBACK_ID, COMMAND_NAME, COMMAND_PARAMS)
+        print("\n--- [ 実行結果 ] ---")
+        print(output)
+    except Exception as e:
+        print(f"[-] エラーが発生しました: {e}")
+
