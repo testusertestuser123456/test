@@ -111,3 +111,16 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[-] エラーが発生しました: {e}")
 
+
+
+# --- 設定項目 ---
+MYTHIC_HOST = (
+    "https://192.168.1.50:7443"  # ご自身のMythicサーバーのIPとポートに変更
+)
+API_TOKEN = "your_actual_api_token_string_here"  # 先ほどコピーしたAPIトークン
+CALLBACK_ID = 5  # 対象にしたいMerlinエージェントのCallback ID
+COMMAND_NAME = "shell"  # 実行したいコマンド名（例: shell）
+COMMAND_PARAMS = "whoami"  # 実行したいコマンドの引数（例: whoami, ipconfig等）
+
+# 自己署名証明書（デフォルト）を使っている場合は False のままでOK
+VERIFY_SSL = False
