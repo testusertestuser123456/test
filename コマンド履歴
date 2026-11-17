@@ -1,0 +1,106 @@
+import requests
+
+# --- 設定項目 ---
+MYTHIC_HOST = "https://your-mythic-server:7443"  # MythicのURL
+API_TOKEN = "YOUR_MYTHIC_API_TOKEN"  # オペレーターのAPIトークン
+CALLBACK_ID = 5  # 履歴を表示したいエージェントのCallback ID
+
+# 自己署名証明書なら False
+VERIFY_SSL = False
+
+# GraphQLのエンドポイント
+GRAPHQL_URL = f"{MYTHIC_HOST}/graphql/"
+
+headers = {
+    "Authorization": f"Bearer {API_TOKEN}",
+    "Content-Type": "json",
+}
+
+
+def get_callback_task_history(callback_id):
+    """指定したCallback IDに紐づくすべてのタスクとレスポンスを取得する"""
+    query = """
+    query GetCallbackTasks($callback_id: Int!) {
+        task(where: {callback_id: {_eq: $callback_id}}, order_by: {id: asc}) {
+            id
+            command_name
+            display_params
+            status
+            operator {
+                username
+            }
+            timestamp
+            responses {
+                response
+            }
+        }
+    }
+    """
+    payload = {"query": query, "variables": {"callback_id": callback_id}}
+
+    response = requests.post(
+        GRAPHQL_URL, json=payload, headers=headers, verify=VERIFY_SSL
+    )
+
+    if response.status_code != 200:
+        raise Exception(
+            f"API Request Failed: {response.status_code} - {response.text}"
+        )
+
+    result = response.json()
+    if "errors" in result:
+        raise Exception(f"GraphQL Error: {result['errors']}")
+
+    return result["data"]["task"]
+
+
+def display_history(callback_id):
+    print(
+        f"[*] Callback #{callback_id} のタスク履歴を取得しています..."
+    )
+    try:
+        tasks = get_callback_task_history(callback_id)
+    except Exception as e:
+        print(f"[-] エラーが発生しました: {e}")
+        return
+
+    if not tasks:
+        print(f"[-] Callback #{callback_id} のタスク履歴は見つかりませんでした。")
+        return
+
+    print(f"\n==================================================")
+    print(f" Callback #{callback_id} Task History ({len(tasks)} tasks)")
+    print(f"==================================================")
+
+    for task in tasks:
+        task_id = task["id"]
+        cmd_name = task["command_name"]
+        params = task["display_params"]
+        status = task["status"]
+        operator = (
+            task["operator"]["username"] if task.get("operator") else "Unknown"
+        )
+        timestamp = task.get("timestamp", "N/A")
+
+        # レスポンスの結合
+        responses = task.get("responses", [])
+        output = "".join([r["response"] for r in responses])
+
+        print(f"\n[Task ID: {task_id}] Status: {status.upper()}")
+        print(f"  ├─ Time     : {timestamp}")
+        print(f"  ├─ Operator : {operator}")
+        print(f"  ├─ Command  : {cmd_name} {params}")
+        print(f"  └─ Output   :")
+
+        if output.strip():
+            # 出力の各行にインデントをつけて見やすく表示
+            for line in output.strip().splitlines():
+                print(f"      | {line}")
+        else:
+            print(f"      | (出力なし / まだ実行されていません)")
+
+        print("-" * 50)
+
+
+if __name__ == "__main__":
+    display_history(CALLBACK_ID)
