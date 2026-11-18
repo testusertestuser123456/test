@@ -112,10 +112,40 @@ services:
 
 victim-ubuntu/Dockerfile
 
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ネットワーク系の標準コマンドを一通り導入
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        iproute2 \
+        iputils-ping \
+        iputils-tracepath \
+        traceroute \
+        wget \
+        curl \
+        dnsutils \
+        netcat-openbsd \
+        net-tools \
+        nmap \
+        ca-certificates \
+        iputils-arping \
+        vim-tiny \
+        less \
+        procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# コンテナを常駐させる
+CMD ["sleep", "infinity"]
+
 
 
 
 arsenal/Dockerfile
+
+
+
+
 arsenal/httpd-dav.conf
 
 
