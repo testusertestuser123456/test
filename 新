@@ -16,6 +16,97 @@ pentest-lab-full/
 
 docker-compose.yml
 
+name: pentest-lab
+
+networks:
+  # 外部セグメント: Kali(ホスト)から到達可能
+  labnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+  # 内部セグメント: ホストからは到達不可・コンテナ間のみ
+  internal_net:
+    driver: bridge
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.inhibit_ipv4: "true"   # ホスト側ブリッジにIPを付けない
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+  # エクスフィル用セグメント: 既存と被らない専用サブネット
+  exfilnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.40.0.0/24
+          gateway: 172.40.0.1
+
+services:
+  # ---- 被害環境1 兼 pivot: labnet + internal_net + exfilnet の3枚 ----
+  victim-ubuntu:
+    build: ./victim-ubuntu
+    container_name: victim-ubuntu
+    hostname: victim-ubuntu
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.10
+      internal_net:
+        ipv4_address: 172.30.0.10
+      exfilnet:
+        ipv4_address: 172.40.0.100
+    cap_add:
+      - NET_RAW      # ping (raw socket)
+      - NET_ADMIN    # ip route 等の操作用
+    restart: unless-stopped
+
+  # ---- 被害環境2: 脆弱な GeoServer (CVE-2024-36401 / RCE) ----
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.23.2
+    container_name: geoserver-vuln
+    hostname: geoserver
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.20
+    restart: unless-stopped
+
+  # ---- アーセナルサーバ: Apache WebDAV (noauth / auth) ----
+  arsenal:
+    build: ./arsenal
+    container_name: arsenal
+    hostname: arsenal
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.30
+    volumes:
+      - /home/kali/noauth:/dav/noauth      # 認証なしで取得可
+      - /home/kali/auth:/dav/auth          # user/password 必須
+    restart: unless-stopped
+
+  # ---- 内部専用コンテナ: nginx / 80 のみ (internal_net・ホストから直接不可) ----
+  internal-target:
+    image: nginx:stable
+    container_name: internal-target
+    hostname: internal-target
+    networks:
+      internal_net:
+        ipv4_address: 172.30.0.20
+    expose:
+      - "80"                 # コンテナ間のみ 80 を公開（ホストへのポート公開はなし）
+    restart: unless-stopped
+
+  # ---- エクスフィルトレーションサーバ: nginx WebDAV(PUT受信) ----
+  exfil-server:
+    build: ./exfil-server
+    container_name: exfil-server
+    hostname: exfil-server
+    networks:
+      exfilnet:
+        ipv4_address: 172.40.0.10
+    restart: unless-stopped
 
 
 
