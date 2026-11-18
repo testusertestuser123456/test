@@ -1,0 +1,33 @@
+ディレクトリ構成
+
+pentest-lab-full/
+├── docker-compose.yml
+├── README.md
+├── victim-ubuntu/
+│   └── Dockerfile
+├── arsenal/
+│   ├── Dockerfile
+│   └── httpd-dav.conf
+└── exfil-server/
+    ├── Dockerfile
+    └── exfil.conf
+
+
+
+docker-compose.yml
+
+
+
+
+victim-ubuntu/Dockerfile
+
+
+
+
+arsenal/Dockerfile
+arsenal/httpd-dav.conf
+
+
+
+exfil-server/Dockerfile
+exfil-server/exfil.conf
